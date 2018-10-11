@@ -45,11 +45,11 @@ void loop()
   Y = CircuitPlayground.motionY();
   Z = CircuitPlayground.motionZ();
   // Test print:
-  Serial.print(X);
-  Serial.print(",");
-  Serial.print(Y);
-  Serial.print(",");
-  Serial.println(Z);
+  // Serial.print(X);
+  // Serial.print(",");
+  // Serial.print(Y);
+  // Serial.print(",");
+  // Serial.println(Z);
 
   // Caluculate average:
   X_sum += X;		// Summing X motion values
@@ -139,9 +139,8 @@ void loop()
   {
   	while(1)
   	{
-  		CircuitPlayground.playTone(200, 50);		// Play sound
+  		CircuitPlayground.playTone(500, 50);		// Play sound
   	}
-  	
   }
 
   // Sensor is upside down - blue LED alarm
@@ -157,10 +156,11 @@ void loop()
   	CircuitPlayground.setPixelColor(7, 0,   0,   255);
   	CircuitPlayground.setPixelColor(8, 0,   0,   255);
   	CircuitPlayground.setPixelColor(9, 0,   0,   255);
+  	CircuitPlayground.playTone(50, 50);		// Play sound
   }
 
   // Sensor has fallen - green LED and audio alarm:
-  if (X > (X_prev+10) || X < (X_prev-10) || Y > (Y_prev+10) || Y < (Y_prev-10) || Z > (Z_prev+10) || Z < (Z_prev-10))
+  if (X > (X_prev+15) || X < (X_prev-15) || Y > (Y_prev+15) || Y < (Y_prev-15) || Z > (Z_prev+15) || Z < (Z_prev-15))
   {
   	CircuitPlayground.setPixelColor(0, 0,   255,   0);
   	CircuitPlayground.setPixelColor(1, 0,   255,   0);
