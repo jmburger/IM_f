@@ -409,7 +409,7 @@ void HR_SpO2_RR_HRV_Tb(int rec_time, int array_size, bool RR_HRV)
     bool IR_DC = false;	//Return either DC value (true) or AC value (false)  
     IR_AC_array[i] = DCR_function_IR(raw_IR_Val, ALPHA_DCR, IR_DC);         //filter raw IR LED data through DC removal
     //Calculating AC RMS value: (only after 100 iterations - remove noise)
-    if (i > 300 && i <= 400)
+    if (i > 300 && i <= 350)
     {
       Sum_AC_IR += pow((IR_AC_array[i]),2);                                 //Sum of the IR AC signal value
     }
@@ -419,7 +419,7 @@ void HR_SpO2_RR_HRV_Tb(int rec_time, int array_size, bool RR_HRV)
     //Get DC value from signal:
     IR_DC = true;
     IR_DC_val = DCR_function_IR(raw_IR_Val, ALPHA_DCR, IR_DC);        		//Get DC value from IR signal
-    if (i == 350)
+    if (i == 325)
     {
       IR_DC_val_SpO2 = IR_DC_val;
     }
@@ -430,14 +430,14 @@ void HR_SpO2_RR_HRV_Tb(int rec_time, int array_size, bool RR_HRV)
     bool RED_DC = false;	//Return either DC value (true) or AC value (false)  
     float RED_AC_value = DCR_function_RED(raw_RED_Val, ALPHA_DCR, RED_DC); 	//filter raw RED LED data through DC removal
     //Calculating AC RMS value: (only after 50 iterations - remove noise)
-    if (i > 300 && i <= 400)
+    if (i > 300 && i <= 350)
     {
       Sum_AC_RED += pow((RED_AC_value),2);                               	//Sum of the RED AC signal value
     }
     //Get DC value from signal
     RED_DC = true;
     RED_DC_val = DCR_function_RED(raw_RED_Val, ALPHA_DCR, RED_DC);    		//Get DC value from RED signal
-    if (i == 350)
+    if (i == 325)
     {
       RED_DC_val_SpO2 = RED_DC_val;
     }
@@ -645,7 +645,7 @@ void HR_SpO2_RR_HRV_Tb(int rec_time, int array_size, bool RR_HRV)
     HRV = sqrt(sum_of_HRV/(Peak_count-2));        			// RMSSD calculation to get HRV score value between 0-6.5
     Serial.println(HRV);
     //Serial.println(HRV_score_float);
-    float HRV_score = HRV*15.385;                    		// ln(RMSSD0 value between 0-100
+    float HRV_score = HRV*15.385;                    		// ln(RMSSD) value between 0-100
     //Serial.println(HRV_score);
     HRV_val = HRV_score;
   }

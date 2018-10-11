@@ -187,16 +187,16 @@ void print_data()
       Serial.println(" %");
     } 
     delay(20);
-    // Serial.print("RR: ");
-    // Serial.print(RR_val);
-    // Serial.println(" pm");
-    // Serial.println("");
+    Serial.print("RR: ");
+    Serial.print(RR_val);
+    Serial.println(" pm");
+    Serial.println("");
     // delay(20);
-    Serial.println("");
-    Serial.println("");
-    Serial.println("");
-    Serial.println("");
-    Serial.println("");
+    // Serial.println("");
+    // Serial.println("");
+    // Serial.println("");
+    // Serial.println("");
+    // Serial.println("");
     delay(20);
   }
 
