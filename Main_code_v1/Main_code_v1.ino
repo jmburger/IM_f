@@ -286,7 +286,7 @@ void Accelerometer_ACPE()
   	CircuitPlayground.setPixelColor(8, 0,   0,   255);
   	CircuitPlayground.setPixelColor(9, 0,   0,   255);
     // Add an audio alarm after a time period:
-    if (delta_timer_Z >= 5000000)
+    if (delta_timer_Z >= 15000000)
     {
       CircuitPlayground.playTone(50, 50);   // Play sound
     }
