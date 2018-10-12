@@ -293,6 +293,44 @@ void Accelerometer_ACPE()
   		CircuitPlayground.playTone(200, 50);		// Play sound
   	}
   }
+
+  // Check for infection:
+  if ( BPM_val > 190 && HRV_val < 20 && RR_val < 30 && SpO2_val < 89 && Tb_val > 38)
+  {
+  	while(1)
+  	{
+  		CircuitPlayground.clearPixels();
+    	CircuitPlayground.setPixelColor(0, 255, 0, 0);
+	    delay(20);
+	    CircuitPlayground.clearPixels();
+	    CircuitPlayground.setPixelColor(1, 255, 0, 0);
+	    delay(20);
+	    CircuitPlayground.clearPixels();
+	    CircuitPlayground.setPixelColor(2, 255, 0, 0);
+	    delay(20);
+	    CircuitPlayground.clearPixels();
+	    CircuitPlayground.setPixelColor(3, 255, 0, 0);
+	    delay(20);
+	    CircuitPlayground.clearPixels();
+	    CircuitPlayground.setPixelColor(4, 255, 0, 0);
+	    delay(20);
+	    CircuitPlayground.clearPixels();
+	    CircuitPlayground.setPixelColor(5, 255, 0, 0);
+	    delay(20);
+	    CircuitPlayground.clearPixels();
+	    CircuitPlayground.setPixelColor(6, 255, 0, 0);
+	    delay(20);
+	    CircuitPlayground.clearPixels();
+	    CircuitPlayground.setPixelColor(7, 255, 0, 0);
+	    delay(20);
+	    CircuitPlayground.clearPixels();
+	    CircuitPlayground.setPixelColor(8, 255, 0, 0);
+	    delay(20);
+	    CircuitPlayground.clearPixels();
+	    CircuitPlayground.setPixelColor(9, 255, 0, 0);
+	    delay(20);
+  	}
+  }
 }
 
 void print_data()
