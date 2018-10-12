@@ -5,6 +5,9 @@
 #include <stdint.h>
 #include <stdio.h>
 
+// Adafruit Circuit Playground Express (ACPE) microcontroller:
+#include <Adafruit_CircuitPlayground.h>
+
 // MAX30105 sensor
 #include <MAX30105.h>
 MAX30105 MAX30105_sensor;
@@ -39,9 +42,6 @@ int delta_12s = 0;
 int start_2m = 0;
 int delta_2m = 0;
 
-// Adafruit Circuit Playground Express (ACPE) microcontroller:
-#include <Adafruit_CircuitPlayground.h>
-
 // Accelerometer variables
 float X = 0;
 float Y = 0; 
@@ -63,6 +63,8 @@ bool continous_check = false;
 // time for LED alarm and Audio alarm
 int start_timer = 0;
 int delta_timer = 0;
+int start_timer_Z = 0;
+int delta_timer_Z = 0;
  
 void setup() 
 {
@@ -71,6 +73,12 @@ void setup()
   // Start circuit playground:
   CircuitPlayground.begin();
   CircuitPlayground.setAccelRange(LIS3DH_RANGE_2_G);
+
+  //Show that infant monitor is on:
+  CircuitPlayground.setPixelColor(1, 255,   255,   255);
+  CircuitPlayground.setPixelColor(3, 255,   255,   255);
+  CircuitPlayground.setPixelColor(6, 255,   255,   255);
+  CircuitPlayground.setPixelColor(8, 255,   255,   255); 
 
   // start-up the MAX30105 sensor
   MAX30105_Startup(); 
@@ -228,6 +236,11 @@ void Accelerometer_ACPE()
   	 start_timer = micros();
   	 continous_check = false;
   	 CircuitPlayground.clearPixels();
+     //Show that infant monitor is on:
+     CircuitPlayground.setPixelColor(1, 255,   255,   255);
+     CircuitPlayground.setPixelColor(3, 255,   255,   255);
+     CircuitPlayground.setPixelColor(6, 255,   255,   255);
+     CircuitPlayground.setPixelColor(8, 255,   255,   255);
   	 // Test Print:
   	 //Serial.println("IS_motion");
   }
@@ -260,7 +273,7 @@ void Accelerometer_ACPE()
   }
 
   // Sensor is upside down - blue LED alarm
-  if (Z < 0)
+  if (Z < -5)
   {
   	CircuitPlayground.setPixelColor(0, 0,   0,   255);
   	CircuitPlayground.setPixelColor(1, 0,   0,   255);
@@ -272,26 +285,35 @@ void Accelerometer_ACPE()
   	CircuitPlayground.setPixelColor(7, 0,   0,   255);
   	CircuitPlayground.setPixelColor(8, 0,   0,   255);
   	CircuitPlayground.setPixelColor(9, 0,   0,   255);
-  	CircuitPlayground.playTone(50, 50);		// Play sound
+    // Add an audio alarm after a time period:
+    if (delta_timer_Z >= 5000000)
+    {
+      CircuitPlayground.playTone(50, 50);   // Play sound
+    }
   }
+  else
+  {
+    start_timer_Z = micros();
+  }
+  delta_timer_Z = micros() - start_timer_Z;
 
   // Sensor has fallen - green LED and audio alarm:
   if (X > (X_prev+15) || X < (X_prev-15) || Y > (Y_prev+15) || Y < (Y_prev-15) || Z > (Z_prev+15) || Z < (Z_prev-15))
   {
-  	CircuitPlayground.setPixelColor(0, 0,   255,   0);
-  	CircuitPlayground.setPixelColor(1, 0,   255,   0);
-  	CircuitPlayground.setPixelColor(2, 0,   255,   0);
-  	CircuitPlayground.setPixelColor(3, 0,   255,   0);
-  	CircuitPlayground.setPixelColor(4, 0,   255,   0);
-  	CircuitPlayground.setPixelColor(5, 0,   255,   0);
-  	CircuitPlayground.setPixelColor(6, 0,   255,   0);
-  	CircuitPlayground.setPixelColor(7, 0,   255,   0);
-  	CircuitPlayground.setPixelColor(8, 0,   255,   0);
-  	CircuitPlayground.setPixelColor(9, 0,   255,   0);
-  	while(1)
-  	{
-  		CircuitPlayground.playTone(200, 50);		// Play sound
-  	}
+  	 CircuitPlayground.setPixelColor(0, 0,   255,   0);
+  	 CircuitPlayground.setPixelColor(1, 0,   255,   0);
+  	 CircuitPlayground.setPixelColor(2, 0,   255,   0);
+  	 CircuitPlayground.setPixelColor(3, 0,   255,   0);
+  	 CircuitPlayground.setPixelColor(4, 0,   255,   0);
+  	 CircuitPlayground.setPixelColor(5, 0,   255,   0);
+  	 CircuitPlayground.setPixelColor(6, 0,   255,   0);
+  	 CircuitPlayground.setPixelColor(7, 0,   255,   0);
+  	 CircuitPlayground.setPixelColor(8, 0,   255,   0);
+  	 CircuitPlayground.setPixelColor(9, 0,   255,   0);
+  	 while(1)
+  	 {
+  		 CircuitPlayground.playTone(200, 50);		// Play sound
+  	 }
   }
 
   // Check for infection:
