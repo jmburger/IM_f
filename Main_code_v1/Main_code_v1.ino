@@ -25,6 +25,9 @@ uint8_t count = 0;
 float sum = 0;
 //Low pass filter (butterworth filter) variables:
 float Val[3];
+//Sensing if MAX30105 sensor is making contact
+long unblockedValue; //Average IR at power up 
+#define CONT_VALUE    180000    // value for contant sensitivity
 
 // Global values:
 float Tb_val = 0;
@@ -35,6 +38,7 @@ float HRV_val = 0;
 
 // Flags
 bool Prop_rec = true;       //Check to see if data was recorded properly if not redo recording.
+bool Start_up = false;      //Run on start up
 
 //timer requiremnts:
 int start_12s = 0;
@@ -89,27 +93,8 @@ void setup()
   Serial.println("");
   Serial.println("Warming Up.....");
   Serial.println("");
-
-  //------------------
-  // MAX30105 Warm Up:
-  int recording_time = 4500000;     //Heart rate recording time
-  int array_size = 225;
-  HR_SpO2_RR_HRV_Tb(recording_time, array_size, false); 
-  //------------------
-
-  // Get HR SpO2 RR HRV:
-  recording_time = 30000000;			//Heart rate recording time
-  array_size = 2390;
-  HR_SpO2_RR_HRV_Tb(recording_time, array_size, true);
-  while (Prop_rec == false)
-  {
-    print_data();
-    Accelerometer_ACPE();
-    HR_SpO2_RR_HRV_Tb(recording_time, array_size, true);
-  }
-
-  // Print vital data:
-  print_data();
+  // Initiate start up:
+  Start_up = true;
 
   //Start timers:
   start_12s = micros();
@@ -118,44 +103,115 @@ void setup()
 
 void loop()
 {
-  Accelerometer_ACPE();
-  // do every 12 seconds
-  if(delta_12s >= 12000000)    
+  // Only do when sensor makes contact:
+  int currentDelta = MAX30105_sensor.getIR() - unblockedValue;
+  // Test print:
+  Serial.println(currentDelta);
+  // Current Delta is greater than one when contact is made:
+  if (currentDelta < CONT_VALUE)
   {
-	start_12s = micros();
-	int recording_time_HR = 8000000;			//Heart rate recording time
-    int array_size = 630;
-    HR_SpO2_RR_HRV_Tb(recording_time_HR, array_size, false);
-    while (Prop_rec == false)
+    //Show that infant monitor is on an there is contact:
+    CircuitPlayground.clearPixels();
+    CircuitPlayground.setPixelColor(1, 255,   255,   255);
+    CircuitPlayground.setPixelColor(3, 255,   255,   255);
+    CircuitPlayground.setPixelColor(6, 255,   255,   255);
+    CircuitPlayground.setPixelColor(8, 255,   255,   255);
+    // Do only on start up:
+    if (Start_up == true)
     {
-      Accelerometer_ACPE();
-      print_data();
-      HR_SpO2_RR_HRV_Tb(recording_time_HR, array_size, false);
-    }
-    // Print vital data:
-	print_data(); 
-  }
-  delta_12s = micros() - start_12s; 
+      //------------------
+      // MAX30105 Warm Up:
+      int recording_time = 4500000;     //Heart rate recording time
+      int array_size = 225;
+      HR_SpO2_RR_HRV_Tb(recording_time, array_size, false); 
+      //------------------
 
-  // do every 2 minutes
-  if(delta_2m >= 120000000)    
-  {
-	start_2m = micros();
-	// On start up do current balancing:
-	//Current_Balancing();	
-	int recording_time_HR = 30000000;			//Heart rate recording time
-    int array_size = 2390;
-	HR_SpO2_RR_HRV_Tb(recording_time_HR, array_size, true);
-    while (Prop_rec == false)
-    {
-      Accelerometer_ACPE();
+      // Get HR SpO2 RR HRV:
+      recording_time = 30000000;      //Heart rate recording time
+      array_size = 2390;
+      HR_SpO2_RR_HRV_Tb(recording_time, array_size, true);
+      while (Prop_rec == false)
+      {
+        // Current Delta is greater than one when contact is made:
+        if (currentDelta < CONT_VALUE)
+        {
+          //Show that infant monitor not making contact:
+          CircuitPlayground.clearPixels();
+          CircuitPlayground.setPixelColor(1, 255,   40,   0);
+          CircuitPlayground.setPixelColor(3, 255,   40,   0);
+          CircuitPlayground.setPixelColor(6, 255,   40,   0);
+          CircuitPlayground.setPixelColor(8, 255,   40,   0);
+        }
+        print_data();
+        Accelerometer_ACPE();
+        HR_SpO2_RR_HRV_Tb(recording_time, array_size, true);
+      }
+
+      // Print vital data:
       print_data();
-      HR_SpO2_RR_HRV_Tb(recording_time_HR, array_size, true);
+      // Start up complete: 
+      Start_up = false;
     }
-    // Print vital data:
-	print_data();   			
+
+    Accelerometer_ACPE();
+    // do every 12 seconds
+    if(delta_12s >= 12000000)    
+    {
+  	start_12s = micros();
+  	int recording_time_HR = 8000000;			//Heart rate recording time
+      int array_size = 630;
+      HR_SpO2_RR_HRV_Tb(recording_time_HR, array_size, false);
+      while (Prop_rec == false)
+      {
+        // Current Delta is greater than one when contact is made:
+        if (currentDelta < CONT_VALUE)
+        {
+          //Show that infant monitor not making contact:
+          CircuitPlayground.clearPixels();
+          CircuitPlayground.setPixelColor(1, 255,   40,   0);
+          CircuitPlayground.setPixelColor(3, 255,   40,   0);
+          CircuitPlayground.setPixelColor(6, 255,   40,   0);
+          CircuitPlayground.setPixelColor(8, 255,   40,   0);
+        }
+        Accelerometer_ACPE();
+        print_data();
+        HR_SpO2_RR_HRV_Tb(recording_time_HR, array_size, false);
+      }
+      // Print vital data:
+  	print_data(); 
+    }
+    delta_12s = micros() - start_12s; 
+
+    // do every 2 minutes
+    if(delta_2m >= 120000000)    
+    {
+  	start_2m = micros();
+  	// On start up do current balancing:
+  	//Current_Balancing();	
+  	int recording_time_HR = 30000000;			//Heart rate recording time
+      int array_size = 2390;
+  	HR_SpO2_RR_HRV_Tb(recording_time_HR, array_size, true);
+      while (Prop_rec == false)
+      {
+        Accelerometer_ACPE();
+        print_data();
+        HR_SpO2_RR_HRV_Tb(recording_time_HR, array_size, true);
+      }
+      // Print vital data:
+  	print_data();   			
+    }
+    delta_2m = micros() - start_2m; 
   }
-  delta_2m = micros() - start_2m; 
+  else
+  {
+    //Show that infant monitor not making contact:
+    CircuitPlayground.clearPixels();
+    CircuitPlayground.setPixelColor(1, 255,   40,   0);
+    CircuitPlayground.setPixelColor(3, 255,   40,   0);
+    CircuitPlayground.setPixelColor(6, 255,   40,   0);
+    CircuitPlayground.setPixelColor(8, 255,   40,   0);
+  }
+
 }
  
 void Accelerometer_ACPE() 
@@ -235,16 +291,9 @@ void Accelerometer_ACPE()
   {
   	 start_timer = micros();
   	 continous_check = false;
-  	 CircuitPlayground.clearPixels();
-     //Show that infant monitor is on:
-     CircuitPlayground.setPixelColor(1, 255,   255,   255);
-     CircuitPlayground.setPixelColor(3, 255,   255,   255);
-     CircuitPlayground.setPixelColor(6, 255,   255,   255);
-     CircuitPlayground.setPixelColor(8, 255,   255,   255);
   	 // Test Print:
   	 //Serial.println("IS_motion");
   }
-
   delta_timer = micros() - start_timer;
 
   // If NO motion longer than 10's - red LED alarm:
@@ -450,6 +499,27 @@ void HR_SpO2_RR_HRV_Tb(int rec_time, int array_size, bool RR_HRV)
   {
   	// Run accelrometer check:
     Accelerometer_ACPE();
+    // Check if sensor is still making contact:
+    int currentDelta = MAX30105_sensor.getIR() - unblockedValue;
+    // Test print:
+    Serial.println(currentDelta);
+    //Serial.println(" In HR Loop ");
+    // If no contact break wile loop and start over:
+    if (currentDelta < CONT_VALUE)
+    {
+      Prop_rec = false; // not properally recorded start again 
+      break;
+    }
+    else 
+    {
+      Prop_rec =  true; // Carry on there is contact
+      //Show that infant monitor is on an there is contact:
+      CircuitPlayground.clearPixels();
+      CircuitPlayground.setPixelColor(1, 255,   255,   255);
+      CircuitPlayground.setPixelColor(3, 255,   255,   255);
+      CircuitPlayground.setPixelColor(6, 255,   255,   255);
+      CircuitPlayground.setPixelColor(8, 255,   255,   255);
+    }
     // if raw data is available 
     while (MAX30105_sensor.available() == false) //do we have new data
     MAX30105_sensor.check();                     //chech for new data
@@ -517,197 +587,201 @@ void HR_SpO2_RR_HRV_Tb(int rec_time, int array_size, bool RR_HRV)
     
     delta_rec = micros() - start_rec;						// delta time calculation 30 seconds 
   }
-  // Shut down MAX30105 sensor:
-  MAX30105_sensor.shutDown();       						// Shutdown MAX30105 sensor
-  // Start data processing: 
 
-  // Slope Sum Function (SSF): 
-  int j = 0;               								//new counter
-  float SSF = 0;           								//summation in window period
-  for (int i = window+1; i < IR_array_size; i++)
+  if (Prop_rec == true)
   {
-	for (int x = window; x >= 0; x--)
-	{
-	  SSF = 0;
-	  float delta_input = (IR_AC_array[i-window]) - (IR_AC_array[(i-window)-1]);
-	  if (delta_input > 0)
-	  {
-	    SSF += (delta_input);          
-      }
-	}
-	IR_AC_array[j] = SSF;
-	//Test print:
-	// Serial.print(IR_AC_array[j]);
-	// Serial.print(",");
-	// Serial.println(j);
-	// delay(15);
-	j++;
-  }
-  //Test print:
-  //Serial.println(j);
+    // Shut down MAX30105 sensor:
+    MAX30105_sensor.shutDown();       						// Shutdown MAX30105 sensor
+    // Start data processing: 
 
-  // Filter signal (remove spikes in signal - by capping the signal)
-  int Signal_cap = 1000;											// Cap signal can't go higher than 9.
-  int count_cap_reached = 0;                // count the amount of times the signal cap has been reached
-  for (int i = 0; i < j; i++)
-  {
-    if(IR_AC_array[i] >= Signal_cap)
+    // Slope Sum Function (SSF): 
+    int j = 0;               								//new counter
+    float SSF = 0;           								//summation in window period
+    for (int i = window+1; i < IR_array_size; i++)
     {
-	  IR_AC_array[i] = Signal_cap;
-      count_cap_reached++;
-    }
-  }
-  // Check if a clean signal was recorded:
-  if(count_cap_reached >= 1)
-  {
-    Prop_rec = false;
-  }
-  else 
-  {
-    Prop_rec = true;
-  }
-
-  //Identifies the highest peaks of the of the number of expected peaks.
-  float Value_of_Peak = 0;        // Value of peak detected
-  float Prev_value_of_peak = 0;     // Previous value of peak detected 
-  float Sum_of_Peak = 0;                  // Sum of peak detected
-  int Count_peaks = 0;          // Count peaks
-  int Prev_i = 0;             // Previous i
-  for (int i = 0; i < j; i++)
-  {
-    if(IR_AC_array[i-1] < IR_AC_array[i] && IR_AC_array[i] > IR_AC_array[i+1] && IR_AC_array[i] > 1 && IR_AC_array[i] != Signal_cap)
-    { 
-      Value_of_Peak = IR_AC_array[i];
-      Sum_of_Peak += IR_AC_array[i];
-      Count_peaks++;
-      if (i < Prev_i+14)
-      {
-        if (Value_of_Peak > Prev_value_of_peak)
-        {
-          Sum_of_Peak -= Prev_value_of_peak;
+  	for (int x = window; x >= 0; x--)
+  	{
+  	  SSF = 0;
+  	  float delta_input = (IR_AC_array[i-window]) - (IR_AC_array[(i-window)-1]);
+  	  if (delta_input > 0)
+  	  {
+  	    SSF += (delta_input);          
         }
-        else
-        {
-          Sum_of_Peak -= Value_of_Peak;
-        }
-        Count_peaks--;
-      }
-      Prev_i = i;
-      Prev_value_of_peak = Value_of_Peak;
+  	}
+  	IR_AC_array[j] = SSF;
+  	//Test print:
+  	// Serial.print(IR_AC_array[j]);
+  	// Serial.print(",");
+  	// Serial.println(j);
+  	// delay(15);
+  	j++;
     }
-  }
-  //Calculating threshold
-  float threshold = 0.8*(Sum_of_Peak/Count_peaks);  //threshold value for beat detection
+    //Test print:
+    //Serial.println(j);
 
-  // Test print: 
-  // for(int i = 0; i < j; i++)
-  // {
-  //   Serial.print(IR_AC_array[i]);
-  //   Serial.print(",");
-  //   Serial.println(threshold);
-  //   //Serial.print(",");
-  //   //Serial.println(i);
-  //   delay(5);
-  //  } 
-
-  // Counting the peaks to calculate BPM, RR and HRV:
-  int Peak_count = 0;                   // Counter to count the number of peaks
-  int P2p_time_start = 0;               // Peak to peak start time
-  int Sum_of_p2p_times = 0;             // sum of the times between peaks in the 5 second recording
-  int Delta_p2p_time[110];              // Peak to peak delta time
-  int Start_delta = 0;
-  Prev_i = 0;	   						  // Previous i
-  bool check = false;
-  for(int i = 0; i < j; i++)
-  {  
-    if (IR_AC_array[i] > threshold)      											//Count peaks above threshold (beats) 
+    // Filter signal (remove spikes in signal - by capping the signal)
+    int Signal_cap = 1000;											// Cap signal can't go higher than 9.
+    int count_cap_reached = 0;                // count the amount of times the signal cap has been reached
+    for (int i = 0; i < j; i++)
     {
-      if(IR_AC_array[i-1] < IR_AC_array[i] && IR_AC_array[i] > IR_AC_array[i+1])    	//Peak detecting 
+      if(IR_AC_array[i] >= Signal_cap)
       {
-        Peak_count++;
+  	  IR_AC_array[i] = Signal_cap;
+        count_cap_reached++;
+      }
+    }
+    // Check if a clean signal was recorded:
+    if(count_cap_reached >= 1)
+    {
+      Prop_rec = false;
+    }
+    else 
+    {
+      Prop_rec = true;
+    }
+
+    //Identifies the highest peaks of the of the number of expected peaks.
+    float Value_of_Peak = 0;        // Value of peak detected
+    float Prev_value_of_peak = 0;     // Previous value of peak detected 
+    float Sum_of_Peak = 0;                  // Sum of peak detected
+    int Count_peaks = 0;          // Count peaks
+    int Prev_i = 0;             // Previous i
+    for (int i = 0; i < j; i++)
+    {
+      if(IR_AC_array[i-1] < IR_AC_array[i] && IR_AC_array[i] > IR_AC_array[i+1] && IR_AC_array[i] > 1 && IR_AC_array[i] != Signal_cap)
+      { 
+        Value_of_Peak = IR_AC_array[i];
+        Sum_of_Peak += IR_AC_array[i];
+        Count_peaks++;
         if (i < Prev_i+14)
         {
-      	  Peak_count--;
-      	  check = true;
-        }																//increment the peak counts 
-        if (Peak_count == 1) 
-        {
-      	  Start_delta = micros();           										// start of the total recording time
-        }                                           
-        if (Peak_count > 1 && check == false)
-        {
-          Delta_p2p_time[Peak_count-2] = micros() - P2p_time_start;    			//delta time between peak to peak
-          // Test print:
-          //Serial.println(Delta_p2p_time[Peak_count-2]);
-          Sum_of_p2p_times += Delta_p2p_time[Peak_count-2];
+          if (Value_of_Peak > Prev_value_of_peak)
+          {
+            Sum_of_Peak -= Prev_value_of_peak;
+          }
+          else
+          {
+            Sum_of_Peak -= Value_of_Peak;
+          }
+          Count_peaks--;
         }
-	    check = false;
-        P2p_time_start = micros();                       		 					//starting time of peak to peak
         Prev_i = i;
+        Prev_value_of_peak = Value_of_Peak;
       }
     }
-  }
-  int End_delta = micros() - Start_delta;                 						// Delta time of the for loop
+    //Calculating threshold
+    float threshold = 0.8*(Sum_of_Peak/Count_peaks);  //threshold value for beat detection
 
-  // Calculating heart rate (HR):
-  float refine_factor = 1;
-  if (RR_HRV == true)
-  {
-    refine_factor = 1;												// Factor to refine BPM value
-  }
-  else
-  {
-    refine_factor = 1.05;												// Factor to refine BPM value
-  }
-  int Total_60s = End_delta*(60000000/(rec_time));                        // Taking the 5 seconds/ 30 seconds to 60 seconds
-  int Avg_p2p_time = Sum_of_p2p_times/Peak_count;      							// Average peak to peak time in 5 second recording 
-  float BPM = (Total_60s/Avg_p2p_time)*refine_factor;         					// Calculating the beats per minute
-  BPM_val = BPM;
+    // Test print: 
+    // for(int i = 0; i < j; i++)
+    // {
+    //   Serial.print(IR_AC_array[i]);
+    //   Serial.print(",");
+    //   Serial.println(threshold);
+    //   //Serial.print(",");
+    //   //Serial.println(i);
+    //   delay(5);
+    //  } 
 
-  // Calculating SpO2:
-  float RMS_AC_IR = sqrt(Sum_AC_IR/50);                     						// RMS of the IR AC signal
-  float RMS_AC_RED = sqrt(Sum_AC_RED/50);                   						// RMS of the RED AC signal
-  float R = (RMS_AC_RED/RED_DC_val_SpO2)/(RMS_AC_IR/IR_DC_val_SpO2);    			// R value used to calculate Sp02
-  float SpO2 = 110 - 25*R; 
-  SpO2_val = SpO2;
-
-  if (RR_HRV == true)
-  {
-    // Calculating respiratory rate (RR):
-    int RR_count = 0;
-    for ( int i = 1; i < Peak_count-2; i++)
-    {
-      // Test print:
-      //Serial.println(Delta_p2p_time[i]);
-      if(Delta_p2p_time[i-1] < Delta_p2p_time[i] && Delta_p2p_time[i] > Delta_p2p_time[i+1])
+    // Counting the peaks to calculate BPM, RR and HRV:
+    int Peak_count = 0;                   // Counter to count the number of peaks
+    int P2p_time_start = 0;               // Peak to peak start time
+    int Sum_of_p2p_times = 0;             // sum of the times between peaks in the 5 second recording
+    int Delta_p2p_time[110];              // Peak to peak delta time
+    int Start_delta = 0;
+    Prev_i = 0;	   						  // Previous i
+    bool check = false;
+    for(int i = 0; i < j; i++)
+    {  
+      if (IR_AC_array[i] > threshold)      											//Count peaks above threshold (beats) 
       {
-        RR_count++;                                       	// count breaths
-        // Test print:
-        //Serial.println("-----");
+        if(IR_AC_array[i-1] < IR_AC_array[i] && IR_AC_array[i] > IR_AC_array[i+1])    	//Peak detecting 
+        {
+          Peak_count++;
+          if (i < Prev_i+14)
+          {
+        	  Peak_count--;
+        	  check = true;
+          }																//increment the peak counts 
+          if (Peak_count == 1) 
+          {
+        	  Start_delta = micros();           										// start of the total recording time
+          }                                           
+          if (Peak_count > 1 && check == false)
+          {
+            Delta_p2p_time[Peak_count-2] = micros() - P2p_time_start;    			//delta time between peak to peak
+            // Test print:
+            //Serial.println(Delta_p2p_time[Peak_count-2]);
+            Sum_of_p2p_times += Delta_p2p_time[Peak_count-2];
+          }
+  	    check = false;
+          P2p_time_start = micros();                       		 					//starting time of peak to peak
+          Prev_i = i;
+        }
       }
     }
-    float RR = RR_count*2;                               	// RR breaths per minute (count 30's times 2)
-    RR_val = RR;
+    int End_delta = micros() - Start_delta;                 						// Delta time of the for loop
 
-    // Calculating heart rate variability (HRV):
-    float HRV = 0;            								// Heart rate variablity score from 0 - 100
-    int sum_of_HRV = 0;     								//sum of square peak to peak values for RMSSD calculation 
-    for(int i = 1; i < Peak_count-1; i++) 
+    // Calculating heart rate (HR):
+    float refine_factor = 1;
+    if (RR_HRV == true)
     {
-      // Test print:
-      //Serial.println(Delta_p2p_time[i]);
-      sum_of_HRV += pow((Delta_p2p_time[i] - Delta_p2p_time[i-1]), 2);
-      //Serial.println(sum_of_HRV);
+      refine_factor = 1;												// Factor to refine BPM value
     }
-    // Test print:
-    //Serial.println(sum_of_HRV);
-    //Serial.println(Peak_count);
-    HRV = sqrt(sum_of_HRV/(Peak_count-2));        			// RMSSD calculation to get HRV score value between 0-6.5
-    Serial.println(HRV);
-    //Serial.println(HRV_score_float);
-    float HRV_score = HRV*15.385;                    		// ln(RMSSD) value between 0-100
-    //Serial.println(HRV_score);
-    HRV_val = HRV_score;
+    else
+    {
+      refine_factor = 1.05;												// Factor to refine BPM value
+    }
+    int Total_60s = End_delta*(60000000/(rec_time));                        // Taking the 5 seconds/ 30 seconds to 60 seconds
+    int Avg_p2p_time = Sum_of_p2p_times/Peak_count;      							// Average peak to peak time in 5 second recording 
+    float BPM = (Total_60s/Avg_p2p_time)*refine_factor;         					// Calculating the beats per minute
+    BPM_val = BPM;
+
+    // Calculating SpO2:
+    float RMS_AC_IR = sqrt(Sum_AC_IR/50);                     						// RMS of the IR AC signal
+    float RMS_AC_RED = sqrt(Sum_AC_RED/50);                   						// RMS of the RED AC signal
+    float R = (RMS_AC_RED/RED_DC_val_SpO2)/(RMS_AC_IR/IR_DC_val_SpO2);    			// R value used to calculate Sp02
+    float SpO2 = 110 - 25*R; 
+    SpO2_val = SpO2;
+
+    if (RR_HRV == true)
+    {
+      // Calculating respiratory rate (RR):
+      int RR_count = 0;
+      for ( int i = 1; i < Peak_count-2; i++)
+      {
+        // Test print:
+        //Serial.println(Delta_p2p_time[i]);
+        if(Delta_p2p_time[i-1] < Delta_p2p_time[i] && Delta_p2p_time[i] > Delta_p2p_time[i+1])
+        {
+          RR_count++;                                       	// count breaths
+          // Test print:
+          //Serial.println("-----");
+        }
+      }
+      float RR = RR_count*2;                               	// RR breaths per minute (count 30's times 2)
+      RR_val = RR;
+
+      // Calculating heart rate variability (HRV):
+      float HRV = 0;            								// Heart rate variablity score from 0 - 100
+      int sum_of_HRV = 0;     								//sum of square peak to peak values for RMSSD calculation 
+      for(int i = 1; i < Peak_count-1; i++) 
+      {
+        // Test print:
+        //Serial.println(Delta_p2p_time[i]);
+        sum_of_HRV += pow((Delta_p2p_time[i] - Delta_p2p_time[i-1]), 2);
+        //Serial.println(sum_of_HRV);
+      }
+      // Test print:
+      //Serial.println(sum_of_HRV);
+      //Serial.println(Peak_count);
+      HRV = sqrt(sum_of_HRV/(Peak_count-2));        			// RMSSD calculation to get HRV score value between 0-6.5
+      Serial.println(HRV);
+      //Serial.println(HRV_score_float);
+      float HRV_score = HRV*15.385;                    		// ln(RMSSD) value between 0-100
+      //Serial.println(HRV_score);
+      HRV_val = HRV_score;
+    }
   }
 }
 
@@ -733,6 +807,14 @@ void MAX30105_Startup()
 
   MAX30105_sensor.setup(ledBrightness, sampleAverage, ledMode, sampleRate, pulseWidth, adcRange); //Configure sensor with these settings
 	MAX30105_sensor.clearFIFO();                           //rest fifo register 
+
+  //Take an average of IR readings at power up
+  unblockedValue = 0;
+  for (byte x = 0 ; x < 32 ; x++)
+  {
+    unblockedValue += MAX30105_sensor.getIR(); //Read the IR value
+  }
+  unblockedValue /= 32;
 }
 
 // DC Removeral filter for Heart Rate (HR)
