@@ -79,10 +79,16 @@ void setup()
   CircuitPlayground.setAccelRange(LIS3DH_RANGE_2_G);
 
   //Show that infant monitor is on:
-  CircuitPlayground.setPixelColor(1, 255,   255,   255);
-  CircuitPlayground.setPixelColor(3, 255,   255,   255);
-  CircuitPlayground.setPixelColor(6, 255,   255,   255);
-  CircuitPlayground.setPixelColor(8, 255,   255,   255); 
+  CircuitPlayground.setPixelColor(0, 255,   250,   250);
+  CircuitPlayground.setPixelColor(1, 255,   250,   250);
+  CircuitPlayground.setPixelColor(2, 255,   250,   250);
+  CircuitPlayground.setPixelColor(3, 255,   250,   250);
+  CircuitPlayground.setPixelColor(4, 255,   250,   250);
+  CircuitPlayground.setPixelColor(5, 255,   250,   250);
+  CircuitPlayground.setPixelColor(6, 255,   250,   250);
+  CircuitPlayground.setPixelColor(7, 255,   250,   250);
+  CircuitPlayground.setPixelColor(8, 255,   250,   250);
+  CircuitPlayground.setPixelColor(9, 255,   250,   250);
 
   // start-up the MAX30105 sensor
   MAX30105_Startup(); 
@@ -96,122 +102,127 @@ void setup()
   // Initiate start up:
   Start_up = true;
 
-  //Start timers:
-  start_12s = micros();
-  start_2m = micros();
+  //Take an average of IR readings at power up
+  unblockedValue = 0;
+  for (byte x = 0 ; x < 32 ; x++)
+  {
+    unblockedValue += MAX30105_sensor.getIR(); //Read the IR value
+  }
+  unblockedValue /= 32;
 }
 
 void loop()
 {
-  // Only do when sensor makes contact:
-  int currentDelta = MAX30105_sensor.getIR() - unblockedValue;
-  // Test print:
-  Serial.println(currentDelta);
-  // Current Delta is greater than one when contact is made:
-  if (currentDelta < CONT_VALUE)
+  // Do only on start up:
+  if (Start_up == true)
   {
-    //Show that infant monitor is on an there is contact:
-    CircuitPlayground.clearPixels();
-    CircuitPlayground.setPixelColor(1, 255,   255,   255);
-    CircuitPlayground.setPixelColor(3, 255,   255,   255);
-    CircuitPlayground.setPixelColor(6, 255,   255,   255);
-    CircuitPlayground.setPixelColor(8, 255,   255,   255);
-    // Do only on start up:
-    if (Start_up == true)
+    //------------------
+    // MAX30105 Warm Up:
+    int recording_time = 4500000;     //Heart rate recording time
+    int array_size = 225;
+    HR_SpO2_RR_HRV_Tb(recording_time, array_size, false); 
+    //------------------
+
+    // Get HR SpO2 RR HRV:
+    recording_time = 30000000;      //Heart rate recording time
+    array_size = 2390;
+    HR_SpO2_RR_HRV_Tb(recording_time, array_size, true);
+    while (Prop_rec == false)
     {
-      //------------------
-      // MAX30105 Warm Up:
-      int recording_time = 4500000;     //Heart rate recording time
-      int array_size = 225;
-      HR_SpO2_RR_HRV_Tb(recording_time, array_size, false); 
-      //------------------
-
-      // Get HR SpO2 RR HRV:
-      recording_time = 30000000;      //Heart rate recording time
-      array_size = 2390;
-      HR_SpO2_RR_HRV_Tb(recording_time, array_size, true);
-      while (Prop_rec == false)
-      {
-        // Current Delta is greater than one when contact is made:
-        if (currentDelta < CONT_VALUE)
-        {
-          //Show that infant monitor not making contact:
-          CircuitPlayground.clearPixels();
-          CircuitPlayground.setPixelColor(1, 255,   40,   0);
-          CircuitPlayground.setPixelColor(3, 255,   40,   0);
-          CircuitPlayground.setPixelColor(6, 255,   40,   0);
-          CircuitPlayground.setPixelColor(8, 255,   40,   0);
-        }
-        print_data();
-        Accelerometer_ACPE();
-        HR_SpO2_RR_HRV_Tb(recording_time, array_size, true);
-      }
-
-      // Print vital data:
+      check_for_contact();
       print_data();
-      // Start up complete: 
-      Start_up = false;
+      Accelerometer_ACPE();
+      HR_SpO2_RR_HRV_Tb(recording_time, array_size, true);
     }
 
-    Accelerometer_ACPE();
-    // do every 12 seconds
-    if(delta_12s >= 12000000)    
+    // Print vital data:
+    print_data();
+    // Start up complete: 
+    Start_up = false;
+    //Start timers:
+    start_12s = micros();
+    start_2m = micros();
+  }
+
+  Accelerometer_ACPE();
+  // do every 12 seconds
+  if(delta_12s >= 12000000)    
+  {
+	  start_12s = micros();
+	  int recording_time_HR = 8000000;			//Heart rate recording time
+    int array_size = 630;
+    HR_SpO2_RR_HRV_Tb(recording_time_HR, array_size, false);
+    while (Prop_rec == false)
     {
-  	start_12s = micros();
-  	int recording_time_HR = 8000000;			//Heart rate recording time
-      int array_size = 630;
+      check_for_contact();
+      Accelerometer_ACPE();
+      print_data();
       HR_SpO2_RR_HRV_Tb(recording_time_HR, array_size, false);
-      while (Prop_rec == false)
-      {
-        // Current Delta is greater than one when contact is made:
-        if (currentDelta < CONT_VALUE)
-        {
-          //Show that infant monitor not making contact:
-          CircuitPlayground.clearPixels();
-          CircuitPlayground.setPixelColor(1, 255,   40,   0);
-          CircuitPlayground.setPixelColor(3, 255,   40,   0);
-          CircuitPlayground.setPixelColor(6, 255,   40,   0);
-          CircuitPlayground.setPixelColor(8, 255,   40,   0);
-        }
-        Accelerometer_ACPE();
-        print_data();
-        HR_SpO2_RR_HRV_Tb(recording_time_HR, array_size, false);
-      }
-      // Print vital data:
-  	print_data(); 
     }
-    delta_12s = micros() - start_12s; 
+    // Print vital data:
+	  print_data(); 
+  }
+  delta_12s = micros() - start_12s; 
 
-    // do every 2 minutes
-    if(delta_2m >= 120000000)    
-    {
+  // do every 2 minutes
+  if(delta_2m >= 120000000)    
+  {
   	start_2m = micros();
   	// On start up do current balancing:
   	//Current_Balancing();	
   	int recording_time_HR = 30000000;			//Heart rate recording time
-      int array_size = 2390;
+    int array_size = 2390;
   	HR_SpO2_RR_HRV_Tb(recording_time_HR, array_size, true);
-      while (Prop_rec == false)
-      {
-        Accelerometer_ACPE();
-        print_data();
-        HR_SpO2_RR_HRV_Tb(recording_time_HR, array_size, true);
-      }
-      // Print vital data:
-  	print_data();   			
+    while (Prop_rec == false)
+    {
+      check_for_contact();
+      Accelerometer_ACPE();
+      print_data();
+      HR_SpO2_RR_HRV_Tb(recording_time_HR, array_size, true);
     }
-    delta_2m = micros() - start_2m; 
+    // Print vital data:
+  	print_data();   			
   }
-  else
+  delta_2m = micros() - start_2m;
+}
+
+void check_for_contact()
+{
+  // Only do when sensor makes contact:
+  int currentDelta = MAX30105_sensor.getIR() - unblockedValue;
+  // Test print:
+  //Serial.println(currentDelta);
+  // Current Delta is greater than one when contact is made:
+  if (Z > -5 && delta_timer < 10000000 && currentDelta < CONT_VALUE)
   {
     //Show that infant monitor not making contact:
-    CircuitPlayground.clearPixels();
+    CircuitPlayground.setPixelColor(0, 255,   40,   0);
     CircuitPlayground.setPixelColor(1, 255,   40,   0);
+    CircuitPlayground.setPixelColor(2, 255,   40,   0);
     CircuitPlayground.setPixelColor(3, 255,   40,   0);
+    CircuitPlayground.setPixelColor(4, 255,   40,   0);
+    CircuitPlayground.setPixelColor(5, 255,   40,   0);
     CircuitPlayground.setPixelColor(6, 255,   40,   0);
+    CircuitPlayground.setPixelColor(7, 255,   40,   0);
     CircuitPlayground.setPixelColor(8, 255,   40,   0);
+    CircuitPlayground.setPixelColor(9, 255,   40,   0);
+    Prop_rec = false;
   }
-
+  if (Z > -5 && delta_timer < 10000000 && currentDelta >= CONT_VALUE)
+  {
+    CircuitPlayground.setPixelColor(0, 255,   250,   250);
+    CircuitPlayground.setPixelColor(1, 255,   250,   250);
+    CircuitPlayground.setPixelColor(2, 255,   250,   250);
+    CircuitPlayground.setPixelColor(3, 255,   250,   250);
+    CircuitPlayground.setPixelColor(4, 255,   250,   250);
+    CircuitPlayground.setPixelColor(5, 255,   250,   250);
+    CircuitPlayground.setPixelColor(6, 255,   250,   250);
+    CircuitPlayground.setPixelColor(7, 255,   250,   250);
+    CircuitPlayground.setPixelColor(8, 255,   250,   250);
+    CircuitPlayground.setPixelColor(9, 255,   250,   250); 
+    Prop_rec = true;
+  }
+    
 }
  
 void Accelerometer_ACPE() 
@@ -310,7 +321,6 @@ void Accelerometer_ACPE()
   	CircuitPlayground.setPixelColor(8, 255,   0,   0);
   	CircuitPlayground.setPixelColor(9, 255,   0,   0);
   }
-
 
   // If NO motion longer than 15's - audio alarm:
   if (delta_timer >= 15000000)
@@ -499,30 +509,11 @@ void HR_SpO2_RR_HRV_Tb(int rec_time, int array_size, bool RR_HRV)
   {
   	// Run accelrometer check:
     Accelerometer_ACPE();
-    // Check if sensor is still making contact:
-    int currentDelta = MAX30105_sensor.getIR() - unblockedValue;
-    // Test print:
-    Serial.println(currentDelta);
-    //Serial.println(" In HR Loop ");
-    // If no contact break wile loop and start over:
-    if (currentDelta < CONT_VALUE)
-    {
-      Prop_rec = false; // not properally recorded start again 
-      break;
-    }
-    else 
-    {
-      Prop_rec =  true; // Carry on there is contact
-      //Show that infant monitor is on an there is contact:
-      CircuitPlayground.clearPixels();
-      CircuitPlayground.setPixelColor(1, 255,   255,   255);
-      CircuitPlayground.setPixelColor(3, 255,   255,   255);
-      CircuitPlayground.setPixelColor(6, 255,   255,   255);
-      CircuitPlayground.setPixelColor(8, 255,   255,   255);
-    }
     // if raw data is available 
     while (MAX30105_sensor.available() == false) //do we have new data
     MAX30105_sensor.check();                     //chech for new data
+    // Check if sensor is still making contact:
+    check_for_contact();
     //Get IR and Red raw data:
     raw_IR_Val = MAX30105_sensor.getIR();
     raw_RED_Val = MAX30105_sensor.getRed();
@@ -571,6 +562,11 @@ void HR_SpO2_RR_HRV_Tb(int rec_time, int array_size, bool RR_HRV)
     {
       RED_DC_val_SpO2 = RED_DC_val;
     }
+    // not properally recorded start again 
+    if (Prop_rec == false)
+    {
+      break;
+    }
     // Test Print:
     //Serial.println(RED_DC_val);
     if (i >= IR_array_size)
@@ -599,22 +595,22 @@ void HR_SpO2_RR_HRV_Tb(int rec_time, int array_size, bool RR_HRV)
     float SSF = 0;           								//summation in window period
     for (int i = window+1; i < IR_array_size; i++)
     {
-  	for (int x = window; x >= 0; x--)
-  	{
-  	  SSF = 0;
-  	  float delta_input = (IR_AC_array[i-window]) - (IR_AC_array[(i-window)-1]);
-  	  if (delta_input > 0)
-  	  {
-  	    SSF += (delta_input);          
+    	for (int x = window; x >= 0; x--)
+    	{
+    	  SSF = 0;
+    	  float delta_input = (IR_AC_array[i-window]) - (IR_AC_array[(i-window)-1]);
+    	  if (delta_input > 0)
+    	  {
+    	    SSF += (delta_input);          
         }
-  	}
-  	IR_AC_array[j] = SSF;
-  	//Test print:
-  	// Serial.print(IR_AC_array[j]);
-  	// Serial.print(",");
-  	// Serial.println(j);
-  	// delay(15);
-  	j++;
+    	}
+    	IR_AC_array[j] = SSF;
+    	//Test print:
+    	// Serial.print(IR_AC_array[j]);
+    	// Serial.print(",");
+    	// Serial.println(j);
+    	// delay(15);
+    	j++;
     }
     //Test print:
     //Serial.println(j);
